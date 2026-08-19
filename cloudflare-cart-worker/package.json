@@ -1,0 +1,18 @@
+{
+  "name": "rob-openai-cart-worker",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "echo 'Standalone Worker: no frontend build needed'",
+    "deploy": "wrangler deploy"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/server": "2.0.0",
+    "agents": "^0.20.0",
+    "zod": "^4.1.5"
+  },
+  "devDependencies": {
+    "wrangler": "^4.0.0"
+  }
+}
