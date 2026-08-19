@@ -1,0 +1,15 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "rob-openai-cart",
+  "main": "cloudflare-cart-worker/index.ts",
+  "compatibility_date": "2026-08-19",
+  "compatibility_flags": ["nodejs_compat"],
+  "assets": {
+    "directory": "./assets",
+    "binding": "ASSETS",
+    "run_worker_first": ["/mcp", "/health", "/"]
+  },
+  "observability": {
+    "enabled": true
+  }
+}
