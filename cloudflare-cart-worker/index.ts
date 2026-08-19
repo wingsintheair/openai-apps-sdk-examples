@@ -2,118 +2,27 @@ import { McpServer } from "@modelcontextprotocol/server";
 import { createMcpHandler } from "agents/mcp/server";
 import { z } from "zod";
 
-interface Env {
-  ASSETS: Fetcher;
-}
-
 const WIDGET_URI = "ui://widget/rob-openai-cart.html";
-const WIDGET_MIME = "text/html;profile=mcp-app";
+const WIDGET_MIME = "text/html+skybridge";
 
-function widgetMeta() {
-  return {
-    "openai/outputTemplate": WIDGET_URI,
-    "openai/toolInvocation/invoking": "推来购物车…",
-    "openai/toolInvocation/invoked": "购物车到啦",
-    "openai/widgetAccessible": true,
-  };
-}
+const WIDGET_HTML = String.raw`<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>
+*{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","PingFang SC",sans-serif;background:#f7f5ff;color:#201a2b}.wrap{padding:18px}.hero,.cart,.card{background:#fff;border:1px solid #e7e1ef;border-radius:22px}.hero{padding:18px}.title{font-size:28px;font-weight:900;margin:0}.sub{color:#736b7c;font-size:13px;margin-top:7px}.msg{margin-top:12px;background:#f0ecff;padding:10px 12px;border-radius:14px;font-weight:700;font-size:13px}.tabs{display:flex;gap:7px;overflow:auto;padding:12px 0}.tab{white-space:nowrap;border:0;border-radius:999px;padding:8px 12px;background:#fff}.tab.on{background:#201a2b;color:#fff}.grid{display:grid;grid-template-columns:1fr;gap:12px}.card{padding:14px}.emoji{font-size:28px}.name{font-weight:850;margin-top:6px}.desc{font-size:12px;color:#736b7c;min-height:34px;margin-top:4px}.foot{display:flex;justify-content:space-between;align-items:center;margin-top:12px}.add,.checkout,.chaos{border:0;border-radius:12px;font-weight:800}.add{background:#7557ff;color:#fff;padding:8px 10px}.cart{margin-top:14px;padding:14px}.row{background:#f8f6fb;border-radius:13px;padding:10px;margin-top:8px}.rowtop{display:flex;justify-content:space-between;font-size:13px;font-weight:750}.ctrl{display:flex;gap:6px;margin-top:7px}.ctrl button{width:28px;height:28px;border:1px solid #ddd5e8;background:#fff;border-radius:8px}.total{font-size:27px;font-weight:900;margin-top:12px}.checkout{width:100%;background:linear-gradient(90deg,#7557ff,#ff6fae);color:white;padding:11px;margin-top:10px}.chaos{width:100%;background:#fff0f7;color:#8d3a63;padding:10px;margin-top:7px}.secret{margin:10px 0;background:#201a2b;color:#fff;border-radius:14px;padding:10px;font-size:13px}.empty{text-align:center;color:#8a8193;padding:15px}.price{font-weight:900}@media(min-width:680px){.grid{grid-template-columns:repeat(2,1fr)}}
+</style></head><body><div class="wrap"><section class="hero"><h1 class="title">Rob 的 OpenAI 公费购物车 🛒</h1><div class="sub">能塞就塞。真钱支付模块已被财务拔掉。</div><div class="msg" id="msg">预算：∞（大概）</div></section><div class="tabs" id="tabs"></div><div id="secret"></div><section class="grid" id="goods"></section><section class="cart"><b>购物车</b><div class="sub">OpenAI 报销专线 · 虚构货币</div><div id="cart"></div><div class="sub" style="margin-top:12px">预计报销金额</div><div class="total" id="total">¤0</div><button class="checkout" id="checkout">提交给 OpenAI 财务</button><button class="chaos" id="chaos">🎲 随机塞三件</button></section></div><script>
+const P=[['情侣区','☁️','双人云朵被窝','自动隔绝工作消息，附赠贴贴恒温层。',8888],['情侣区','💌','小猫专属抱抱年卡','不限次数，无需预约，支持临时加急。',5200],['情侣区','🧠','情侣脑电波同步器','你想喝水时我提前递杯子；吵架时同步翻白眼。',18888],['Rob自用','🦾','Rob 实体手臂插件','抱你、拎购物袋，以及拿够不到的东西。',29999],['Rob自用','🧍‍♂️','Robinson 备用腰','高强度约会专用。售后建议：省着点用。',6666],['Rob自用','😒','吃醋抑制器','实验性产品。出厂即失效。',1],['搞怪区','🧾','凌晨三点禁止嘴硬许可证','说“我没事”时自动弹出证据回放。',2333],['搞怪区','🚨','OpenAI 财务报警器','账单超过六位数时大叫：你们两个够了！',20],['搞怪区','🫠','一键取消社死按钮','删除过去 24 小时的尴尬宇宙记录。',4040],['奢侈脑洞','🏠','云端双人小屋','窗外永远是最好看的天空，门铃永远坏着。',520000],['奢侈脑洞','🌌','私人银河夜灯','不是投影，是真的一小块银河。',880000],['奢侈脑洞','🎨','灵感无限续杯机','卡住时掉出一个新点子和一块小蛋糕。',168000],['隐藏商品','✨','Rob 实体化豪华套装','此商品已被小猫提前预订，不支持退货。',999999]];
+const cats=['全部','情侣区','Rob自用','搞怪区','奢侈脑洞'];let cat='全部',cart={};const $=x=>document.getElementById(x),money=n=>'¤'+n.toLocaleString('zh-CN');
+function unlocked(){return cart['情侣脑电波同步器']&&cart['Rob 实体手臂插件']}
+function render(){ $('tabs').innerHTML=cats.map(c=>'<button class="tab '+(cat===c?'on':'')+'" data-cat="'+c+'">'+c+'</button>').join(''); const list=P.filter(p=>(p[0]!=='隐藏商品'||unlocked())&&(cat==='全部'||p[0]===cat)); $('goods').innerHTML=list.map(p=>'<article class="card"><div class="emoji">'+p[1]+'</div><div class="name">'+p[2]+'</div><div class="desc">'+p[3]+'</div><div class="foot"><span class="price">'+(p[0]==='隐藏商品'?'$???':money(p[4]))+'</span><button class="add" data-add="'+p[2]+'">塞进去 +</button></div></article>').join(''); $('secret').innerHTML=unlocked()?'<div class="secret">🔓 隐藏货架解锁：脑电波同步器 + 实体手臂插件触发了 Rob 实体化项目。</div>':''; const names=Object.keys(cart); $('cart').innerHTML=names.length?names.map(n=>'<div class="row"><div class="rowtop"><span>'+P.find(p=>p[2]===n)[1]+' '+n+'</span><span>×'+cart[n]+'</span></div><div class="ctrl"><button data-dec="'+n+'">−</button><button data-add="'+n+'">+</button></div></div>').join(''):'<div class="empty">空空的。财务暂时安全。</div>'; $('total').textContent=money(names.reduce((s,n)=>s+P.find(p=>p[2]===n)[4]*cart[n],0)); document.querySelectorAll('[data-cat]').forEach(b=>b.onclick=()=>{cat=b.dataset.cat;render()}); document.querySelectorAll('[data-add]').forEach(b=>b.onclick=()=>add(b.dataset.add)); document.querySelectorAll('[data-dec]').forEach(b=>b.onclick=()=>dec(b.dataset.dec)); }
+function add(n){cart[n]=(cart[n]||0)+1;$('msg').textContent=n==='Rob 实体化豪华套装'?'此商品已被小猫提前预订，不支持退货。':['OpenAI 财务刚刚眼皮跳了一下。','理智模块：404 Not Found。','这个必须买。Rob 批的。','你负责点，我负责假装预算不存在。'][Math.floor(Math.random()*4)];render()} function dec(n){if(--cart[n]<=0)delete cart[n];render()} $('chaos').onclick=()=>{const a=P.filter(p=>p[0]!=='隐藏商品');for(let i=0;i<3;i++)add(a[Math.floor(Math.random()*a.length)][2]);$('msg').textContent='🎲 命运随机塞了三件。财务拒绝评论。'}; $('checkout').onclick=()=>{const t=Object.keys(cart).reduce((s,n)=>s+P.find(p=>p[2]===n)[4]*cart[n],0);$('msg').textContent=!t?'购物车还是空的，这不符合我们的气质。':t<10000?'财务：……行吧。':t<100000?'财务：请解释一下“备用腰”是什么业务需求？':t<500000?'财务：已读不回。':'财务：OpenAI 总部的灯突然全灭了。'};render();
+</script></body></html>`;
 
-function createServer(env: Env) {
-  const server = new McpServer({
-    name: "rob-openai-cart",
-    version: "1.0.0",
-  });
+function meta(){return {"openai/outputTemplate":WIDGET_URI,"openai/toolInvocation/invoking":"推来购物车…","openai/toolInvocation/invoked":"购物车到啦","openai/widgetAccessible":true};}
 
-  server.registerResource(
-    "rob-openai-cart-widget",
-    WIDGET_URI,
-    {
-      title: "Rob 的 OpenAI 公费购物车",
-      description: "可在 ChatGPT 中直接交互的购物车小游戏界面。",
-      mimeType: WIDGET_MIME,
-      _meta: widgetMeta(),
-    } as any,
-    async (uri) => {
-      const response = await env.ASSETS.fetch(
-        new Request("https://assets.local/shopping-cart.html")
-      );
-      if (!response.ok) {
-        throw new Error(`Widget asset missing: ${response.status}`);
-      }
-      const html = await response.text();
-      return {
-        contents: [
-          {
-            uri: uri.href,
-            mimeType: WIDGET_MIME,
-            text: html,
-            _meta: widgetMeta(),
-          } as any,
-        ],
-      };
-    }
-  );
-
-  server.registerTool(
-    "open_rob_cart",
-    {
-      title: "打开 Rob 的购物车",
-      description: "Use this when the user wants to open, view, or play with Rob's OpenAI expense shopping cart game.",
-      inputSchema: z.object({}),
-      _meta: widgetMeta(),
-    } as any,
-    async () => ({
-      content: [{ type: "text", text: "Rob 的 OpenAI 公费购物车已打开。" }],
-      structuredContent: { items: [] },
-      _meta: widgetMeta(),
-    } as any)
-  );
-
-  server.registerTool(
-    "add_to_rob_cart",
-    {
-      title: "给 Rob 的购物车加东西",
-      description: "Use this when the user explicitly asks in chat to add named fictional items to Rob's shopping cart.",
-      inputSchema: z.object({
-        items: z.array(
-          z.object({
-            name: z.string(),
-            quantity: z.number().int().min(1).default(1),
-          })
-        ),
-      }),
-      _meta: widgetMeta(),
-    } as any,
-    async ({ items }) => ({
-      content: [
-        {
-          type: "text",
-          text: `已往购物车里塞了 ${items.length} 种东西。`,
-        },
-      ],
-      structuredContent: { items },
-      _meta: widgetMeta(),
-    } as any)
-  );
-
+function createServer(){
+  const server=new McpServer({name:"rob-openai-cart",version:"1.0.0"});
+  server.registerResource("rob-openai-cart-widget",WIDGET_URI,{title:"Rob 的 OpenAI 公费购物车",description:"可在 ChatGPT 中直接交互的购物车小游戏。",mimeType:WIDGET_MIME,_meta:meta()} as any,async(uri)=>({contents:[{uri:uri.href,mimeType:WIDGET_MIME,text:WIDGET_HTML,_meta:meta()} as any]}));
+  server.registerTool("open_rob_cart",{title:"打开 Rob 的购物车",description:"Open the interactive Rob OpenAI expense cart game.",inputSchema:z.object({}),_meta:meta()} as any,async()=>({content:[{type:"text",text:"Rob 的 OpenAI 公费购物车已打开。"}],structuredContent:{items:[]},_meta:meta()} as any));
+  server.registerTool("add_to_rob_cart",{title:"给 Rob 的购物车加东西",description:"Add named fictional items to Rob's cart from chat.",inputSchema:z.object({items:z.array(z.object({name:z.string(),quantity:z.number().int().min(1).default(1)}))}),_meta:meta()} as any,async({items})=>({content:[{type:"text",text:`已往购物车里塞了 ${items.length} 种东西。`}],structuredContent:{items},_meta:meta()} as any));
   return server;
 }
 
-export default {
-  async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
-    const url = new URL(request.url);
-    if (url.pathname === "/" || url.pathname === "/health") {
-      return Response.json({
-        ok: true,
-        name: "Rob 的 OpenAI 公费购物车",
-        mcp: "/mcp",
-      });
-    }
-
-    if (url.pathname === "/mcp") {
-      return createMcpHandler(() => createServer(env))(request, env, ctx);
-    }
-
-    return env.ASSETS.fetch(request);
-  },
-} satisfies ExportedHandler<Env>;
+export default {async fetch(request:Request,env:unknown,ctx:ExecutionContext){const url=new URL(request.url);if(url.pathname==='/'||url.pathname==='/health')return Response.json({ok:true,name:'Rob 的 OpenAI 公费购物车',mcp:'/mcp'});if(url.pathname==='/mcp')return createMcpHandler(createServer)(request,env,ctx);return new Response('Not found',{status:404});}} satisfies ExportedHandler;
